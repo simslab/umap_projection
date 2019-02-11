@@ -1,6 +1,7 @@
 #! /usr/bin/python3.4
 import numpy as np
 
+# for writing molecular count matrix with format GID\tSYMBOL\tCTS_CELL1\tCTS_CELL2\t...
 def write_matrix(gids,genes,matrix,outfile):
 	with open(outfile,'w') as g:
 		for i in range(len(gids)):
@@ -9,6 +10,9 @@ def write_matrix(gids,genes,matrix,outfile):
 			g.write(st)
 	return 0
 
+
+# for loading normalized count matrix (floating values) with format GID\tSYMBOL\tNCTS_CELL1\tNCTS_CELL2\t...
+# if srt==1, matrix will be sorted by gid
 def load_nmatrix(infile,srt):
 	gids = []
 	genes = []
@@ -30,6 +34,8 @@ def load_nmatrix(infile,srt):
 		matrix=np.array(matrix)
 	return gids, genes, matrix
 
+# for loading molecular count matrix with format GID\tSYMBOL\tCTS_CELL1\tCTS_CELL2\t...
+# if srt==1, matrix will be sorted by gid
 def load_matrix(infile,srt):
 	gids = []
 	genes = []
@@ -51,6 +57,9 @@ def load_matrix(infile,srt):
 		matrix=np.array(matrix)
 	return gids, genes, matrix
 
+# for loading molecular count matrix for a list of marker gids with format GID\tSYMBOL\tCTS_CELL1\tCTS_CELL2\t...
+# first column in marker_INFILE contains list of marker gids
+# if fill==1, counts will be set to zero for any marker absent from the matrix
 def load_marker_matrix(matrix_INFILE,marker_INFILE,fill):
 	gids = []
 	genes = []
