@@ -7,12 +7,12 @@ from scipy.stats.stats import spearmanr
 from scrna_utils import load_marker_matrix
 
 
-refrun_NAME = sys.argv[1]
-marker_INFILE = sys.argv[2]
-proj_PREFIX = sys.argv[3]
-k_PARAM = int(sys.argv[4])
-used_genes = sys.argv[5]
-projrun_NAMES = sys.argv[6::]
+refrun_NAME = sys.argv[1]      # run name for reference dataset (from which original UMAP embedding was defined)
+marker_INFILE = sys.argv[2]    # file containing marker gene list (used to compute original UMAP embedding)
+proj_PREFIX = sys.argv[3]      # prefix for output files containing projection data
+k_PARAM = int(sys.argv[4])     # k parameter for UMAP (number of nearest neighbors for knn graph)
+used_genes = sys.argv[5]       # output file containing list of marker genes actually used (original list may be filtered)
+projrun_NAMES = sys.argv[6::]  # list of run names for projection
 
 
 print('Loading data...')
