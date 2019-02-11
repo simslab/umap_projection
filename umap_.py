@@ -17,7 +17,7 @@ import numpy as np
 import scipy.sparse
 import scipy.sparse.csgraph
 import numba
-from scipy.stats.stats import spearmanr
+from scipy.stats.stats import spearmanr # Sims: modification to add spearman
 import umap.distances as dist
 
 import umap.sparse as sparse
@@ -1357,13 +1357,13 @@ class UMAP(BaseEstimator):
             print("Construct fuzzy simplicial set")
 
         # Handle small cases efficiently by computing all distances
-        if X.shape[0] < 3e9:
+        if X.shape[0] < 3e9:    # Sims: modification to add spearman (essentially all cases are considered small)
             self._small_data = True
             if self.metric == 'spearman':
-                dmat = 1.-spearmanr(X.T)[0]
-                dmat = np.array([[pt if not np.isnan(pt) else 1.0 for pt in vector] for vector in dmat])
+                dmat = 1.-spearmanr(X.T)[0]    # Sims: spearman distance metric
+                dmat = np.array([[pt if not np.isnan(pt) else 1.0 for pt in vector] for vector in dmat]) # Sims: convert nan to 1.0
             else:
-                dmat = pairwise_distances(X, metric=self.metric, **self._metric_kwds)
+                dmat = pairwise_distances(X, metric=self.metric, **self._metric_kwds) # Sims: still allow alternative metrics
             self.graph_ = fuzzy_simplicial_set(
                 dmat,
                 n_neighbors,
@@ -1558,15 +1558,11 @@ class UMAP(BaseEstimator):
         rng_state = random_state.randint(INT32_MIN, INT32_MAX, 3).astype(np.int64)
 
     #    if self._small_data:
-        if self.metric == 'spearman':
-            print(len(X),len(X.T),len(self._raw_data),len(self._raw_data.T))
+        if self.metric == 'spearman': # Sims: modification to add spearman
             newmat = np.concatenate((X.T,self._raw_data.T),axis=1)
-            print(len(newmat))
             dmat = spearmanr(newmat)[0]
-            print(len(X),len(newmat),len(dmat),len(dmat[0]))
             dmat = np.array([1.-dmat[i][len(X):len(newmat.T)] for i in range(len(X))])
-            dmat = np.array([[pt if not np.isnan(pt) else 1.0 for pt in vector] for vector in dmat])
-            print(len(X),len(newmat),len(dmat),len(dmat[0]))
+            dmat = np.array([[pt if not np.isnan(pt) else 1.0 for pt in vector] for vector in dmat]) # convert nan to 1.0 distance
         else:
             dmat = pairwise_distances(
             X, self._raw_data, metric=self.metric, **self._metric_kwds
