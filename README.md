@@ -24,7 +24,7 @@ Suggested usage:
 
 4) Run umap_transform.py.  Example usage:
 
-python umap_transform.py PP001 markers.txt PP017onPP001 20 PP017.used_genes.txt PP017
+python umap_transform.py PP001 markers.txt PP001/PP001.pgs.txt PP017onPP001 20 PP017.used_genes.txt PP017
 
 where PP017 is the scRNA-seq dataset that you want to project onto PP001.  
 
