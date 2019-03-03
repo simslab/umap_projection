@@ -73,7 +73,7 @@ for i in range(len(pdata_filt)):
 	np.savetxt(proj_OUTFILE,umap_proj,delimiter='\t')
 	with PdfPages(pdf_OUTFILE) as pdf:
 		fig=plt.figure(figsize=(10,5))
-		rind = np.argsort(np.random.rand(len(msamples)))  # random index 
+		rind = np.argsort(np.random.rand(len(pgs)))  # random index 
 
 		ax1 = fig.add_subplot(1,2,1)
 		ax1.scatter(umap_model[rind,0],umap_model[rind,1],c=pcolors[rind],s=1)
