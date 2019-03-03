@@ -32,8 +32,6 @@ for run in projrun_NAMES:
 	pmatrix_INFILE = run+'/'+run+'.matrix.txt'
 	pdata.append(load_marker_matrix(pmatrix_INFILE,marker_INFILE,1))
 
-print(len(pdata),len(pdata[0]),len(pdata[0][0]),len(pdata[0][1]),len(pdata[0][2]))
-
 print('Filtering data...')
 rmatrix_filt = []
 pdata_filt = [[] for run in projrun_NAMES]
@@ -53,14 +51,13 @@ with open(used_genes,'w') as g:
 
 rmatrix_filt = np.array(rmatrix_filt)
 pdata_filt = np.array(pdata_filt)
-print(len(pdata_filt[0]))
 del pdata
 del rmatrix
 
 print('Computing model...')
 umap_model = umap.UMAP(n_neighbors=k_PARAM,random_state=42,metric='spearman').fit(rmatrix_filt.T)
+umap_model_emb = umap_model.embedding_
 model_OUTFILE = proj_PREFIX+'.umap_proj_model.txt'
-np.savetxt(model_OUTFILE,umap_model.embedding_,delimiter='\t')
 
 pcolor_set = ['red','green','blue','magenta','brown','cyan','black','orange','grey','darkgreen','yellow','tan','seagreen','fuchsia','gold','olive']
 pgs = np.loadtxt(pg_INFILE,dtype='int')
@@ -72,19 +69,38 @@ for i in range(len(pdata_filt)):
 	pdf_OUTFILE = proj_PREFIX+'.'+projrun_NAMES[i]+'.umap_proj.pdf'
 	np.savetxt(proj_OUTFILE,umap_proj,delimiter='\t')
 	with PdfPages(pdf_OUTFILE) as pdf:
-		fig=plt.figure(figsize=(10,5))
+		fig=plt.figure(figsize=(10,10))
 		rind = np.argsort(np.random.rand(len(pgs)))  # random index 
 
-		ax1 = fig.add_subplot(1,2,1)
-		ax1.scatter(umap_model[rind,0],umap_model[rind,1],c=pcolors[rind],s=1)
+		ax0 = fig.add_subplot(2,2,1)
+		ax0.scatter(umap_model_emb[rind,0],umap_model_emb[rind,1],c=pcolors[rind],s=1)
+		sns.kdeplot(umap_model_emb[rind,0],umap_model_emb[rind,1],cmap='binary_r',shade=False,gridsize=70,n_levels=14)
+		ax0.set_aspect('equal')
+		ax0.set_axis_off()
+		xlm,ylm=ax0.get_xlim(),ax0.get_ylim()
+		
+		ax1 = fig.add_subplot(2,2,2)
+		ax1.scatter(umap_model_emb[rind,0],umap_model_emb[rind,1],c=pcolors[rind],s=1)
 		sns.kdeplot(umap_proj[:,0],umap_proj[:,1],cmap='binary_r',shade=False,gridsize=70,n_levels=14)
+		ax1.set_xlim(xlm)
+		ax1.set_ylim(ylm)
 		ax1.set_aspect('equal')
 		ax1.set_axis_off()
 
-		ax2 = fig.add_subplot(1,2,2)
-		ax2.scatter(umap_model[rind,0],umap_model[rind,1],c='lightgrey',s=1)
-		x=ax2.hexbin(umap_proj[:,0],umap_proj[:,1],cmap='plasma',mincnt=2,alpha=0.8,linewidths=0,edgecolors=None,gridsize=70)
-		plt.colorbar(x,shrink=0.6)
+		ax2 = fig.add_subplot(2,2,3)
+		ax2.scatter(umap_model_emb[rind,0],umap_model_emb[rind,1],c='lightgrey',s=1)
+		ax2.hexbin(umap_proj[:,0],umap_proj[:,1],cmap='plasma',alpha=0.8,mincnt=1,linewidths=0,edgecolors=None,gridsize=70)
+		#plt.colorbar(x,shrink=0.6)
 		ax2.set_aspect('equal')
+		ax2.set_xlim(xlm)
+		ax2.set_ylim(ylm)
 		ax2.set_axis_off()
+		
+		ax3 = fig.add_subplot(2,2,4)
+		ax3.scatter(umap_proj[:,0],umap_proj[:,1],c='k',s=1)
+		ax3.set_aspect('equal')
+		ax3.set_xlim(xlm)
+		ax3.set_ylim(ylm)
+		ax3.set_axis_off()
 		pdf.savefig()
+		
