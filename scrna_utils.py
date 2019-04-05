@@ -78,7 +78,7 @@ def load_marker_matrix(matrix_INFILE,marker_INFILE,fill):
 				except ValueError:
 					matrix.append([float(pt) for pt in llist[2::]])
 	if fill == 1:
-		for gid in marker_INFILE:
+		for gid in markers:
 			if gid not in gids:
 				gids.append(gid)
 				genes.append(gid)
