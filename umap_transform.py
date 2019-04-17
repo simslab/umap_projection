@@ -44,13 +44,12 @@ with open(used_genes,'w') as g:
 					ct+=1
 			if ct == len(pdata):
 				for j in range(len(projrun_NAMES)):
-					pdata_filt[j].append(pdata[j][2][i])
+					pdata_filt[j].append(pdata[j][2][i].tolist())
 				rmatrix_filt.append(rmatrix[i])
 				gene = rgids[i]
 				g.write('%(gene)s\n' % vars())
 
 rmatrix_filt = np.array(rmatrix_filt)
-pdata_filt = np.array(pdata_filt)
 del pdata
 del rmatrix
 
@@ -58,13 +57,14 @@ print('Computing model...')
 umap_model = umap.UMAP(n_neighbors=k_PARAM,random_state=42,metric='spearman').fit(rmatrix_filt.T)
 umap_model_emb = umap_model.embedding_
 model_OUTFILE = proj_PREFIX+'.umap_proj_model.txt'
+np.savetxt(model_OUTFILE,umap_model_emb,delimiter='\t')
 
 pcolor_set = ['red','green','blue','magenta','brown','cyan','black','orange','grey','darkgreen','yellow','tan','seagreen','fuchsia','gold','olive']
 pgs = np.loadtxt(pg_INFILE,dtype='int')
 pcolors = np.array([pcolor_set[pg] for pg in pgs])
 print('Computing projections...')
 for i in range(len(pdata_filt)):
-	umap_proj = umap_model.transform(np.float32(pdata_filt[i].T))
+	umap_proj = umap_model.transform(np.float32(np.transpose(np.array(pdata_filt[i]))))
 	proj_OUTFILE = proj_PREFIX+'.'+projrun_NAMES[i]+'.umap_proj.txt'
 	pdf_OUTFILE = proj_PREFIX+'.'+projrun_NAMES[i]+'.umap_proj.pdf'
 	np.savetxt(proj_OUTFILE,umap_proj,delimiter='\t')
