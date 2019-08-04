@@ -61,7 +61,7 @@ print('Loading data...') # get reference count matrix (only marker genes)
 rgids,rgenes,rmatrix = load_marker_matrix(ui.ref_matrix,ui.markers,1)
 
 print('Computing model...') 
-ref_rank = np.apply_along_axis(rankdata,1,rmatrix) # rank each gene in each cell by counts
+ref_rank = np.apply_along_axis(rankdata,0,rmatrix) # rank each gene in each cell by counts
 # compute UMAP embedding of reference using Spearman as a similarity metric (by computing Pearson of ranks)
 umap_model = umap.UMAP(n_neighbors=ui.k,random_state=42,metric='correlation').fit(ref_rank.T) 
 umap_model_emb = umap_model.embedding_
@@ -78,7 +78,7 @@ for i,proj_matrix in enumerate(ui.proj_matrices):
     elif len(rgids) > len(pgids):
         print('Error: Some marker GIDS in query matrix %(i)d are missing from the reference matrix.' % vars())
         exit()
-    prj_rank = np.apply_along_axis(rankdata,1,pmatrix) # rank each gene in each cell by counts
+    prj_rank = np.apply_along_axis(rankdata,0,pmatrix) # rank each gene in each cell by counts
     umap_proj = umap_model.transform(prj_rank.T) # use transform function to project query into reference embedding
     proj_output = ui.prefix+'.proj.'+str(i)+'.umap.txt'
     np.savetxt(proj_output,umap_proj,delimiter='\t',fmt='%f') # write projection coordinates to file
