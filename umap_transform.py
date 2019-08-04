@@ -8,99 +8,105 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 plt.rcParams['pdf.fonttype'] = 42
 plt.rcParams['ps.fonttype'] =42
+from scipy.stats import rankdata 
+import argparse
 import seaborn as sns
 
-from scipy.stats.stats import spearmanr
-from scrna_utils import load_marker_matrix
+def parser_user_input():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-rm','--ref-matrix',required=True,help='Path to count matrix for reference.')
+    parser.add_argument('-pm','--proj-matrices',nargs='+',required=True,help='Path to count matrices for query samples.')
+    parser.add_argument('-p','--prefix',required=True,help='Prefix for output including path.')
+    parser.add_argument('-m','--markers',required=True,help='Path to file with one-column list of marker gids (cell-cell similarity will be computed using these markers).')
+    parser.add_argument('-k','-k',required=True,default=20,type=int,help='Integer value of k parameter for UMAP.')
+    return parser
+
+# for loading molecular count matrix for a list of marker gids with format GID\tSYMBOL\tCTS_CELL1\tCTS_CELL2\t...
+# first column in marker_INFILE contains list of marker gids
+# if fill==1, counts will be set to zero for any marker absent from the matrix
+def load_marker_matrix(matrix_INFILE,marker_INFILE,fill):
+    gids = []
+    genes = []
+    matrix = []
+    with open(marker_INFILE) as f:
+        markers = set([line.split()[0] for line in f])
+    with open(matrix_INFILE) as f:
+        for line in f:
+            llist = line.split()
+            gid = llist[0]
+            if gid in markers:
+                gids.append(gid)
+                genes.append(llist[1])
+                try:
+                    matrix.append([int(pt) for pt in llist[2::]])
+                except ValueError:
+                    matrix.append([float(pt) for pt in llist[2::]])
+    if fill == 1:
+        for gid in markers:
+            if gid not in gids:
+                gids.append(gid)
+                genes.append(gid)
+                matrix.append([0 for pt in range(len(matrix[0]))])
+    gids = np.array(gids)
+    ind = np.argsort(gids)
+    gids = gids[ind]
+    genes = np.array(genes)[ind]
+    matrix = np.array(matrix)[ind]
+    return gids, genes, matrix
 
 
-refrun_NAME = sys.argv[1]      # run name for reference dataset (from which original UMAP embedding was defined)
-marker_INFILE = sys.argv[2]    # file containing marker gene list (used to compute original UMAP embedding)
-pg_INFILE = sys.argv[3]	       # file containing cluster labels for reference dataset (or any other index)
-proj_PREFIX = sys.argv[4]      # prefix for output files containing projection data
-k_PARAM = int(sys.argv[5])     # k parameter for UMAP (number of nearest neighbors for knn graph)
-used_genes = sys.argv[6]       # output file containing list of marker genes actually used (original list may be filtered)
-projrun_NAMES = sys.argv[7::]  # list of run names for projection
-
+parser = parser_user_input()
+ui = parser.parse_args()
 
 print('Loading data...')
-rmatrix_INFILE = refrun_NAME+'/'+refrun_NAME+'.matrix.txt'
-rgids,rgenes,rmatrix = load_marker_matrix(rmatrix_INFILE,marker_INFILE,1)
-
-pdata = []
-for run in projrun_NAMES:
-	pmatrix_INFILE = run+'/'+run+'.matrix.txt'
-	pdata.append(load_marker_matrix(pmatrix_INFILE,marker_INFILE,1))
-
-print('Filtering data...')
-rmatrix_filt = []
-pdata_filt = [[] for run in projrun_NAMES]
-with open(used_genes,'w') as g:
-	for i in range(len(rgenes)):
-		if sum(rmatrix[i]) > 0:
-			ct=0
-			for pdat in pdata:
-				if sum(pdat[2][i]) > 0:
-					ct+=1
-			if ct == len(pdata):
-				for j in range(len(projrun_NAMES)):
-					pdata_filt[j].append(pdata[j][2][i].tolist())
-				rmatrix_filt.append(rmatrix[i])
-				gene = rgids[i]
-				g.write('%(gene)s\n' % vars())
-
-rmatrix_filt = np.array(rmatrix_filt)
-del pdata
-del rmatrix
+rgids,rgenes,rmatrix = load_marker_matrix(ui.ref_matrix,ui.markers,1)
 
 print('Computing model...')
-umap_model = umap.UMAP(n_neighbors=k_PARAM,random_state=42,metric='spearman').fit(rmatrix_filt.T)
+ref_rank = np.apply_along_axis(rankdata,1,rmatrix)
+umap_model = umap.UMAP(n_neighbors=ui.k,random_state=42,metric='correlation').fit(ref_rank.T)
 umap_model_emb = umap_model.embedding_
-model_OUTFILE = proj_PREFIX+'.umap_proj_model.txt'
-np.savetxt(model_OUTFILE,umap_model_emb,delimiter='\t')
+model_output = ui.prefix+'.ref_emb.umap.txt'
+np.savetxt(model_output,umap_model_emb,delimiter='\t',fmt='%f')
 
-pcolor_set = ['red','green','blue','magenta','brown','cyan','black','orange','grey','darkgreen','yellow','tan','seagreen','fuchsia','gold','olive']
-pgs = np.loadtxt(pg_INFILE,dtype='int')
-pcolors = np.array([pcolor_set[pg] for pg in pgs])
 print('Computing projections...')
-for i in range(len(pdata_filt)):
-	umap_proj = umap_model.transform(np.float32(np.transpose(np.array(pdata_filt[i]))))
-	proj_OUTFILE = proj_PREFIX+'.'+projrun_NAMES[i]+'.umap_proj.txt'
-	pdf_OUTFILE = proj_PREFIX+'.'+projrun_NAMES[i]+'.umap_proj.pdf'
-	np.savetxt(proj_OUTFILE,umap_proj,delimiter='\t')
-	with PdfPages(pdf_OUTFILE) as pdf:
-		fig=plt.figure(figsize=(10,10))
-		rind = np.argsort(np.random.rand(len(pgs)))  # random index 
+projs = []
+for i,proj_matrix in enumerate(ui.proj_matrices):
+    pgids,pgenes,pmatrix = load_marker_matrix(proj_matrix,ui.markers,1)
+    if len(pgids) < len(rgids):
+        print('Error: Some marker GIDS in the reference matrix are missing in the query matrix %(i)d.' % vars())
+        exit()
+    elif len(rgids) > len(pgids):
+        print('Error: Some marker GIDS in query matrix %(i)d are missing from the reference matrix.' % vars())
+        exit()
+    prj_rank = np.apply_along_axis(rankdata,1,pmatrix)
+    umap_proj = umap_model.transform(prj_rank.T)
+    proj_output = ui.prefix+'.proj.'+str(i)+'.umap.txt'
+    np.savetxt(proj_output,umap_proj,delimiter='\t',fmt='%f')
+    projs.append(umap_proj)
 
-		ax0 = fig.add_subplot(2,2,1)
-		ax0.scatter(umap_model_emb[rind,0],umap_model_emb[rind,1],c=pcolors[rind],s=1)
-		sns.kdeplot(umap_model_emb[rind,0],umap_model_emb[rind,1],cmap='binary_r',shade=False,gridsize=70,n_levels=14)
-		ax0.set_aspect('equal')
-		ax0.set_axis_off()
-		xlm,ylm=ax0.get_xlim(),ax0.get_ylim()
-		
-		ax1 = fig.add_subplot(2,2,2)
-		ax1.scatter(umap_model_emb[rind,0],umap_model_emb[rind,1],c=pcolors[rind],s=1)
-		sns.kdeplot(umap_proj[:,0],umap_proj[:,1],cmap='binary_r',shade=False,gridsize=70,n_levels=14)
-		ax1.set_xlim(xlm)
-		ax1.set_ylim(ylm)
-		ax1.set_aspect('equal')
-		ax1.set_axis_off()
+print('Plotting output...')
+pdf_output = ui.prefix+'.pdf'
+with PdfPages(pdf_output) as pdf:
+    fig,ax = plt.subplots()
+    ax.scatter(umap_model_emb[:,0],umap_model_emb[:,1],s=3,c='k')
+    ax.set_aspect('equal')
+    ax.set_axis_off()
+    ax.set_title('Reference Embedding')
+    pdf.savefig()
+    fig,ax = plt.subplots()
+    ax.scatter(umap_model_emb[:,0],umap_model_emb[:,1],s=3,c='lightgrey')
+    sns.kdeplot(umap_model_emb[:,0],umap_model_emb[:,1],cmap='binary_r',shade=False,gridsize=70,n_levels=14)
+    ax.set_aspect('equal')
+    ax.set_axis_off()
+    ax.set_title('Reference Projected onto Reference Embedding')
+    pdf.savefig()
+    for i,proj in enumerate(projs):
+        fig,ax = plt.subplots()
+        ax.scatter(umap_model_emb[:,0],umap_model_emb[:,1],s=3,c='lightgrey')
+        sns.kdeplot(proj[:,0],proj[:,1],cmap='binary_r',shade=False,gridsize=70,n_levels=14)
+        ax.set_aspect('equal')
+        ax.set_axis_off()
+        ax.set_title('Query %(i)d Projected onto Reference Embedding' % vars())
+        pdf.savefig()
 
-		ax2 = fig.add_subplot(2,2,3)
-		ax2.scatter(umap_model_emb[rind,0],umap_model_emb[rind,1],c='lightgrey',s=1)
-		ax2.hexbin(umap_proj[:,0],umap_proj[:,1],cmap='plasma',alpha=0.8,mincnt=1,linewidths=0,edgecolors=None,gridsize=70)
-		#plt.colorbar(x,shrink=0.6)
-		ax2.set_aspect('equal')
-		ax2.set_xlim(xlm)
-		ax2.set_ylim(ylm)
-		ax2.set_axis_off()
-		
-		ax3 = fig.add_subplot(2,2,4)
-		ax3.scatter(umap_proj[:,0],umap_proj[:,1],c='k',s=1)
-		ax3.set_aspect('equal')
-		ax3.set_xlim(xlm)
-		ax3.set_ylim(ylm)
-		ax3.set_axis_off()
-		pdf.savefig()
-		
+
