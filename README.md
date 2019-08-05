@@ -7,7 +7,7 @@ Requirements:
 1) Python 3.6 or higher
 2) Numpy
 3) Scikit-learn
-4) UMAP
+4) UMAP (https://github.com/lmcinnes/umap)
 5) Scipy
 6) Numba
 7) Seaborn
