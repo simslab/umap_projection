@@ -23,7 +23,7 @@ def parser_user_input():
 # for loading molecular count matrix for a list of marker gids with format GID\tSYMBOL\tCTS_CELL1\tCTS_CELL2\t...
 # first column in marker_INFILE contains list of marker gids
 # if fill==1, counts will be set to zero for any marker absent from the matrix
-def load_marker_matrix(matrix_INFILE,marker_INFILE,fill):
+def load_marker_matrix(matrix_INFILE,marker_INFILE):
     gids = []
     genes = []
     matrix = []
@@ -40,12 +40,6 @@ def load_marker_matrix(matrix_INFILE,marker_INFILE,fill):
                     matrix.append([int(pt) for pt in llist[2::]])
                 except ValueError:
                     matrix.append([float(pt) for pt in llist[2::]])
-    if fill == 1:
-        for gid in markers:
-            if gid not in gids:
-                gids.append(gid)
-                genes.append(gid)
-                matrix.append([0 for pt in range(len(matrix[0]))])
     gids = np.array(gids)
     ind = np.argsort(gids)
     gids = gids[ind]
@@ -58,7 +52,7 @@ parser = parser_user_input()
 ui = parser.parse_args()
 
 print('Loading data...') # get reference count matrix (only marker genes)
-rgids,rgenes,rmatrix = load_marker_matrix(ui.ref_matrix,ui.markers,1)
+rgids,rgenes,rmatrix = load_marker_matrix(ui.ref_matrix,ui.markers)
 
 print('Computing model...') 
 ref_rank = np.apply_along_axis(rankdata,0,rmatrix) # rank each gene in each cell by counts
@@ -71,7 +65,7 @@ np.savetxt(model_output,umap_model_emb,delimiter='\t',fmt='%f') # write referenc
 print('Computing projections...')
 projs = []
 for i,proj_matrix in enumerate(ui.proj_matrices):
-    pgids,pgenes,pmatrix = load_marker_matrix(proj_matrix,ui.markers,1) # get query count matrix (only marker genes)
+    pgids,pgenes,pmatrix = load_marker_matrix(proj_matrix,ui.markers) # get query count matrix (only marker genes)
     if len(pgids) < len(rgids): 
         print('Error: Some marker GIDS in the reference matrix are missing in the query matrix %(i)d.' % vars())
         exit()
