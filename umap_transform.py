@@ -22,7 +22,6 @@ def parser_user_input():
 
 # for loading molecular count matrix for a list of marker gids with format GID\tSYMBOL\tCTS_CELL1\tCTS_CELL2\t...
 # first column in marker_INFILE contains list of marker gids
-# if fill==1, counts will be set to zero for any marker absent from the matrix
 def load_marker_matrix(matrix_INFILE,marker_INFILE):
     gids = []
     genes = []
