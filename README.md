@@ -22,5 +22,5 @@ Suggested usage:
 
 python umap_transform.py -rm REFDATA/REFDATA.matrix.txt -pm QUERY1/QUERY1.matrix.txt QUERY2/QUERY2.matrix.txt -p project_to_REFDATA/project_to_REFDATA --markers markers.txt -k 5
 
-where REFDATA.matrix.txt is a matrix of molecular counts for the reference (first two columns contain GIDS and gene symbols, subsequent column contain counts for each cell), QUERYX.matrix.txt is a matrix of molecular counts for query sample X (same format as REFDATA.matrix.txt), markers.txt is a one-column list of GIDS for computing similarity (usually highly variable genes).
+where REFDATA.matrix.txt is a tab-delimited matrix of molecular counts for the reference (first two columns contain GIDS and gene symbols, subsequent column contain counts for each cell), QUERYX.matrix.txt is a matrix of molecular counts for query sample X (same format as REFDATA.matrix.txt), markers.txt is a one-column list of GIDS for computing similarity (usually highly variable genes). There should be no header in any of the files.
 
